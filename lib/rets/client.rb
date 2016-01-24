@@ -142,7 +142,7 @@ module Rets
         )
         if opts[:resolve]
           rets_class = find_rets_class(opts[:search_type], opts[:class])
-          decorate_results(results, rets_class)
+          decorate_results(results, rets_class, opts[:reference_solvers])
         else
           results
         end
@@ -153,17 +153,21 @@ module Rets
       metadata.tree[resource_name].find_rets_class(rets_class_name)
     end
 
-    def decorate_results(results, rets_class)
+    def decorate_results(results, rets_class, reference_solvers = nil)
       results.map do |result|
-        decorate_result(result, rets_class)
+        decorate_result(result, rets_class, reference_solvers)
       end
     end
 
-    def decorate_result(result, rets_class)
+    def decorate_result(result, rets_class, reference_solvers = nil)
       result.each do |key, value|
         table = rets_class.find_table(key)
         if table
-          result[key] = table.resolve(value.to_s)
+          if reference_solvers && (solver = reference_solvers[key])
+            result[key] = solver.resolve(table, value)
+          else
+            result[key] = table.resolve(value.to_s)
+          end
         else
           #can't resolve just leave the value be
           client_progress.could_not_resolve_find_metadata(key)
