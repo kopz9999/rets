@@ -13,6 +13,9 @@ module Rets
     end
 
     def clean_setup
+      if options.fetch(:login_after_error, true)
+        @capabilities = nil
+      end
       @metadata            = nil
       @tries               = nil
       @login_url           = options[:login_url]
@@ -132,13 +135,13 @@ module Rets
         "Query"               => opts[:query],
         "QueryType"           => opts.fetch(:query_type, "DMQL2"),
       }.reject { |k,v| v.nil? }
-      res = http_post(capability_url("Search"), params)
+      res = clean_response(http_post(capability_url("Search"), params))
 
       if opts[:count] == COUNT.only
         Parser::Compact.get_count(res.body)
       else
         results = Parser::Compact.parse_document(
-          res.body.encode("UTF-8", res.body.encoding, :invalid => :replace, :undef => :replace)
+          res.body
         )
         if opts[:resolve]
           rets_class = find_rets_class(opts[:search_type], opts[:class])
@@ -273,7 +276,7 @@ module Rets
                         "Type"   => "METADATA-#{type}",
                         "ID"     => "0"
                       })
-      res.body
+      clean_response(res).body
     end
 
     # The capabilies as provided by the RETS server during login.
@@ -334,7 +337,12 @@ module Rets
     end
 
     def http_get(url, params=nil, extra_headers={})
-      @http_client.http_get(url, params, extra_headers)
+      clean_response(@http_client.http_get(url, params, extra_headers))
+    end
+
+    def clean_response(res)
+      res.body.encode!("UTF-8", res.body.encoding, :invalid => :replace, :undef => :replace)
+      res
     end
 
     def http_post(url, params, extra_headers = {})
