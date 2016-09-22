@@ -43,10 +43,14 @@ module Rets
         find_lookup_containers(metadata, resource_id).each do |lookup_container|
           lookup_container.lookups.each do |lookup_fragment|
             lookup_name = lookup_fragment["LookupName"]
+            visible_name = lookup_fragment["VisibleName"]
 
             find_lookup_type_containers(metadata, resource_id, lookup_name).each do |lookup_type_container|
               lookup_type_container.lookup_types.each do |lookup_type_fragment|
                 lookup_types[lookup_name] << LookupType.new(lookup_type_fragment)
+                if !visible_name.blank? && lookup_name != visible_name
+                  lookup_types[visible_name] << LookupType.new(lookup_type_fragment)
+                end
               end
             end
           end
