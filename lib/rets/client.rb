@@ -120,12 +120,13 @@ module Rets
       raise ArgumentError.new("missing option :search_type (provide the name of a RETS resource)") unless opts[:search_type]
       raise ArgumentError.new("missing option :class (provide the name of a RETS class)") unless opts[:class]
 
+      format = opts.fetch(:format, Rets::Parser::COMPACT_FORMAT)
       params = {
         "SearchType"          => opts.fetch(:search_type),
         "Class"               => opts.fetch(:class),
 
         "Count"               => opts[:count],
-        "Format"              => opts.fetch(:format, "COMPACT"),
+        "Format"              => format,
         "Limit"               => opts[:limit],
         "Offset"              => opts[:offset],
         "Select"              => opts[:select],
@@ -140,14 +141,21 @@ module Rets
       if opts[:count] == COUNT.only
         Parser::Compact.get_count(res.body)
       else
-        results = Parser::Compact.parse_document(
-          res.body
-        )
-        if opts[:resolve]
-          rets_class = find_rets_class(opts[:search_type], opts[:class])
-          decorate_results(results, rets_class, opts[:reference_solvers])
+        case format
+        when Rets::Parser::STANDARD_FORMAT
+          Parser::StandardXML.parse_document(
+            res.body
+          )
         else
-          results
+          results = Parser::Compact.parse_document(
+            res.body
+          )
+          if opts[:resolve]
+            rets_class = find_rets_class(opts[:search_type], opts[:class])
+            decorate_results(results, rets_class, opts[:reference_solvers])
+          else
+            results
+          end
         end
       end
     end
